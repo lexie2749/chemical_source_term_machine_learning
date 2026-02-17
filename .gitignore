@@ -1,7 +1,7 @@
-.venv/
-venv/
-bin/
-lib/
-include/
-__pycache__/
+.venv
+venv
+bin
+lib
+include
+__pycache__
 *.pyc

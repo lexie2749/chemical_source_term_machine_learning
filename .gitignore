@@ -1,3 +1,7 @@
-.env
-.venv
-ct-env
+.venv/
+venv/
+bin/
+lib/
+include/
+__pycache__/
+*.pyc

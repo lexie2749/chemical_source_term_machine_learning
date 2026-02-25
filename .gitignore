@@ -1,7 +1,3 @@
 .venv
-venv
-bin
-lib
-include
 __pycache__
-*.pyc
+.DS_Store

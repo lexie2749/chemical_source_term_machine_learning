@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
-# --- Missing Block Definition ---
 class ResidualBlock(nn.Module):
     def __init__(self, width, dropout=0.01):
         super().__init__()
@@ -21,8 +20,6 @@ class ResidualBlock(nn.Module):
     def forward(self, x):
         return self.activation(x + self.block(x))
     
-
-# Parameter count helper
 def count_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -287,11 +284,8 @@ if __name__ == '__main__':
     
     # Load checkpoint to get normalization stats
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    ckpt = torch.load('chem_relax_net.pth', map_location=device, weights_only=False)
+    ckpt = torch.load('chem_relax_net.pth', map_location=device)
     X_mean = ckpt['X_mean']
-    X_std = ckpt['X_std']
-    Y_mean = ckpt['Y_mean']
-    Y_std = ckpt['Y_std']
     output_columns = ckpt['output_columns']
     
     # Model predictions
@@ -321,4 +315,8 @@ if __name__ == '__main__':
     print(f"  Shape: {df_output.shape}")
     print(f"  Columns: {list(df_output.columns)}")
     print(f"\nFirst few rows:")
+
     print(df_output.head())
+
+    print(df_output.head())
+

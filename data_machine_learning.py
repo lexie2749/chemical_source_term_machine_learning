@@ -107,19 +107,19 @@ def train(
     # Store for checkpoint
     output_columns = ['X_CO2', 'X_O2', 'X_N2', 'X_CO', 'X_NO', 'X_C', 'X_O', 'X_N', 'T', 'P']
 
-    # ── Model ─────────────────────────────────────────────────────────────────
+    # Model
     model = ChemRelaxNet(n_outputs=10, width=32, n_blocks=2)  
     model = model.to(device)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Parameters: {n_params:,}")
 
-    # ── Optimiser + scheduler ─────────────────────────────────────────────────
+    # Optimiser
     optimiser = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=epochs, eta_min=1e-6)
 
     criterion = nn.MSELoss()
 
-    # ── Training loop ──────────────────────────────────────────────────────────
+    # Train loop
     best_val_loss = float('inf')
     train_losses, val_losses = [], []
 
@@ -222,6 +222,7 @@ def predict(model, log10_t: np.ndarray, checkpoint_path: str = 'chem_relax_net.p
     dict with keys: 'CO2','O2','N2','CO','NO','C','O','N','T','P'
                     values are in original units (mole fractions, K, Pa)
     """
+    torch.serialization.add_safe_globals([numpy._core.multiarray._reconstruct])
     ckpt = torch.load('chem_relax_net.pth', map_location=device, weights_only=False)
     model.load_state_dict(ckpt['model_state_dict'])
     model.eval()
@@ -308,7 +309,7 @@ if __name__ == '__main__':
         output_data[col_name] = predictions[col_name]
     
     df_output = pd.DataFrame(output_data)
-    output_csv_path = 'data_predictions.csv'
+    output_csv_path = 'data_predictions_mlp.csv'
     df_output.to_csv(output_csv_path, index=False)
     
     print(f"\n✓ Predictions saved to {output_csv_path}")

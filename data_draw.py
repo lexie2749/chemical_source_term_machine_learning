@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load the training data
-file_path_1 = '/Users/xiaoxizhou/Downloads/adrian_surf/code/data_predictions.csv'
+file_path_1 = '/Users/xiaoxizhou/Downloads/adrian_surf/code/sindy_predictions.csv'
 file_path_2 = '/Users/xiaoxizhou/Downloads/adrian_surf/code/training_data.csv'
 df1 = pd.read_csv(file_path_1)
 df2 = pd.read_csv(file_path_2)
@@ -24,7 +24,7 @@ plt.ylabel('Mole Fraction')
 plt.yscale('log')  # Log scale for y-axis to see all species
 plt.title('Species Concentration vs Time')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.grid(True, which="both", linestyle="--", alpha=0.2)
+plt.grid(False)
 plt.tight_layout()
 
 # Save and display the result

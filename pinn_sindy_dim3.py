@@ -43,19 +43,20 @@ import argparse
 # ─────────────────────────────────────────────────────────────────────────────
 CFG = dict(
     # --- files ---
-    yaml_path   = 'airNASA9ions.yaml',
-    csv_path    = 'training_data.csv',
+    yaml_path   = '/Users/xiaoxizhou/Downloads/adrian_surf/code/training_data/airNASA9ions.yaml',
+    csv_path    = '/Users/xiaoxizhou/Downloads/adrian_surf/code/training_data/training_data.csv',
     checkpoint  = 'sindy_autoencoder.pth',
 
     # --- species tracked in data_generation.py (must match CSV columns) ---
     species     = ['CO2', 'O2', 'N2', 'CO', 'NO', 'C', 'O', 'N'],
 
     # --- network sizes ---
-    latent_dim  = 8,     # z dimension  (≥ 2, ≤ n_species+2)
+    latent_dim  = 3,     # z dimension  (z1, z2, z3)
     enc_hidden  = [64, 64, 32],
     dec_hidden  = [32, 64, 64],
 
-    # --- SINDy library: poly degree 2 in z (no cross terms to keep Ξ sparse) ---
+    # --- SINDy library: linear + cross terms only ---
+    #     terms used: z1, z2, z3, z1z2, z2z3, z1z3   (no constant, no z_i²)
     sindy_poly_degree = 2,
 
     # --- loss weights (λ₁, λ₂, λ₃ from the PNAS paper image) ---
@@ -190,33 +191,32 @@ def load_and_normalize(csv_path: str, species: list, val_frac: float, test_frac:
 # ─────────────────────────────────────────────────────────────────────────────
 def sindy_library(z: torch.Tensor, poly_degree: int = 2) -> torch.Tensor:
     """
-    Build polynomial library Θ(z) for each sample.
+    Build library Θ(z) for each sample.
     z: [batch, latent_dim]
     Returns Θ: [batch, n_library_terms]
 
-    Terms: [1, z1, z2, ..., z1², z1z2, z2², ...]
-    """
-    batch = z.shape[0]
-    terms = [torch.ones(batch, 1, device=z.device)]  # constant term
+    Terms: [z1, ..., zn,  z_i*z_j for i<j]
+           (no constant term, no z_i² squared terms)
 
-    # Degree 1
-    terms.append(z)                                    # [batch, latent_dim]
+    For latent_dim=3:  [z1, z2, z3, z1z2, z1z3, z2z3]   → 6 terms
+    """
+    terms = [z]                                        # linear: z1, ..., zn
 
     if poly_degree >= 2:
-        # Degree 2: all unique pairs (including z_i * z_i)
         latent_dim = z.shape[1]
+        # Cross terms only: z_i * z_j with i < j  (skip i == j squares)
         for i in range(latent_dim):
-            for j in range(i, latent_dim):
+            for j in range(i + 1, latent_dim):
                 terms.append((z[:, i] * z[:, j]).unsqueeze(1))
 
     return torch.cat(terms, dim=1)   # [batch, n_theta]
 
 
 def sindy_library_size(latent_dim: int, poly_degree: int) -> int:
-    """Number of library terms for given latent_dim and poly_degree."""
-    n = 1 + latent_dim
+    """Number of library terms: linear (n) + cross pairs (n*(n-1)/2)."""
+    n = latent_dim
     if poly_degree >= 2:
-        n += latent_dim * (latent_dim + 1) // 2
+        n += latent_dim * (latent_dim - 1) // 2
     return n
 
 
@@ -657,20 +657,21 @@ def train(cfg: dict = CFG):
 # 10.  PRINT SINDY DISCOVERED EQUATIONS
 # ─────────────────────────────────────────────────────────────────────────────
 def print_sindy_coefficients(model: SINDyAutoencoder, latent_dim: int, poly_degree: int):
-    """Print the discovered sparse dynamics ż = Θ(z) Ξ in human-readable form."""
+    """Print the discovered sparse dynamics ż = Θ(z) Ξ in human-readable form.
+
+    Term order MUST mirror sindy_library():
+        linear : z1, ..., z_n
+        cross  : z_i z_j with i < j     (no constant, no squares)
+    For latent_dim=3 → [z1, z2, z3, z1z2, z1z3, z2z3]
+    """
     Xi = model.Xi.detach().cpu().numpy()
 
-    # Build library term names
-    terms = ['1']
-    for i in range(latent_dim):
-        terms.append(f'z{i+1}')
+    # Build library term names — exactly matches sindy_library()
+    terms = [f'z{i+1}' for i in range(latent_dim)]
     if poly_degree >= 2:
         for i in range(latent_dim):
-            for j in range(i, latent_dim):
-                if i == j:
-                    terms.append(f'z{i+1}²')
-                else:
-                    terms.append(f'z{i+1}z{j+1}')
+            for j in range(i + 1, latent_dim):
+                terms.append(f'z{i+1}z{j+1}')
 
     print("\n── Discovered SINDy Equations ż = Θ(z)Ξ ──")
     for k in range(latent_dim):
